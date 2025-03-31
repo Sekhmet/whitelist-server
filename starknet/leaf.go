@@ -9,8 +9,7 @@ import (
 
 type AddressType int
 
-var b = new(big.Int)
-var UINT_128_MAX = b.Sub(b.Lsh(big.NewInt(1), 128), big.NewInt(1))
+var UINT_128_MAX = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1))
 
 const (
 	AddressTypeStarknet AddressType = iota
@@ -33,8 +32,8 @@ func (l *Leaf) Hash() *big.Int {
 	item, _ = new(fp.Element).SetString(l.Address)
 	data = append(data, item)
 
-	low := big.NewInt(0).And(&l.VotingPower, UINT_128_MAX)
-	high := big.NewInt(0).Rsh(&l.VotingPower, 128)
+	low := new(big.Int).And(&l.VotingPower, UINT_128_MAX)
+	high := new(big.Int).Rsh(&l.VotingPower, 128)
 
 	item = new(fp.Element).SetBigInt(low)
 	data = append(data, item)
