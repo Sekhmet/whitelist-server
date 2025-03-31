@@ -1,6 +1,6 @@
 module github.com/Sekhmet/whitelist-server
 
-go 1.24.1
+go 1.23.5
 
 require github.com/consensys/gnark-crypto v0.17.0
 
