@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/rs/cors"
 )
 
 type JsonRpcRequest struct {
@@ -52,7 +53,7 @@ func writeResult(w http.ResponseWriter, result any) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func NewRpcMux(db *sql.DB) *http.ServeMux {
+func NewRpcHandler(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /", func(w http.ResponseWriter, r *http.Request) {
@@ -183,5 +184,7 @@ func NewRpcMux(db *sql.DB) *http.ServeMux {
 		}
 	})
 
-	return mux
+	handler := cors.Default().Handler(mux)
+
+	return handler
 }

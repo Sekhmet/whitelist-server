@@ -20,8 +20,8 @@ func main() {
 		log.Fatalf("Error connecting to the database: %v", err)
 	}
 
-	mux := NewRpcMux(db)
+	handler := NewRpcHandler(db)
 
 	fmt.Println("Server started at :8080")
-	http.ListenAndServe(":8080", mux)
+	http.ListenAndServe(":8080", handler)
 }
