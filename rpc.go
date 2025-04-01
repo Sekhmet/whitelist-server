@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -38,7 +40,7 @@ func writeResult(w http.ResponseWriter, result any) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func NewRpcMux() *http.ServeMux {
+func NewRpcMux(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /", func(w http.ResponseWriter, r *http.Request) {
@@ -62,13 +64,21 @@ func NewRpcMux() *http.ServeMux {
 				return
 			}
 
+			db.Exec("INSERT INTO merkletree_requests (id, network) VALUES ($1, $2)", requestId.String(), params.Network)
+
 			request := &Request{
 				id:      requestId.String(),
 				network: params.Network,
 				entries: params.Entries,
 			}
 
-			go ProcessRequest(request)
+			go func() {
+				err := ProcessRequest(request, db)
+				if err != nil {
+					log.Printf("Error processing request: %v", err)
+					return
+				}
+			}()
 
 			writeResult(w, requestId)
 

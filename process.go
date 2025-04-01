@@ -1,7 +1,10 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"strings"
@@ -15,7 +18,7 @@ type Request struct {
 	entries []string
 }
 
-func ProcessRequest(r *Request) error {
+func ProcessRequest(r *Request, db *sql.DB) error {
 	log.Printf("Processing request: %v", r.id)
 
 	var leaves []Leaf
@@ -47,7 +50,23 @@ func ProcessRequest(r *Request) error {
 	tree := GenerateMerkleTree(leaves)
 	root := tree[0]
 
-	log.Printf("[%s] Merkle root 0x%x", r.id, root)
+	var strTree = make([]string, len(tree))
+	for i, node := range tree {
+		strTree[i] = fmt.Sprintf("0x%x", node)
+	}
+
+	encodedTree, err := json.Marshal(strTree)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(
+		"UPDATE merkletree_requests SET processed = true, updated_at = CURRENT_TIMESTAMP, root = $1, tree = $2 WHERE id = $3",
+		fmt.Sprintf("0x%x", root), encodedTree, r.id,
+	)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
