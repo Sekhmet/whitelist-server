@@ -2,7 +2,10 @@ module github.com/Sekhmet/whitelist-server
 
 go 1.23.5
 
-require github.com/consensys/gnark-crypto v0.17.0
+require (
+	github.com/consensys/gnark-crypto v0.17.0
+	github.com/google/uuid v1.6.0
+)
 
 require (
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
