@@ -136,8 +136,30 @@ func (m *MerkleTree) MarshalJSON() ([]byte, error) {
 
 func (m *MerkleTree) UnmarshalJSON(data []byte) error {
 	var encodedTree EncodedTree
-	if err := json.Unmarshal(data, &encodedTree); err != nil {
-		return err
+
+	if string(data)[0] == '[' {
+		// Handle legacy format that does not include tree indices
+		// This is only used for Starknet merkle trees which are not sorted
+		// So we can compute treeIndices
+
+		var hashes []string
+		if err := json.Unmarshal(data, &hashes); err != nil {
+			return err
+		}
+
+		numberOfLeaves := (len(hashes) + 1) / 2
+
+		treeIndices := make(map[int]int, numberOfLeaves)
+		for i := range numberOfLeaves {
+			treeIndices[i] = len(hashes) - 1 - i
+		}
+
+		encodedTree.Hashes = hashes
+		encodedTree.TreeIndices = treeIndices
+	} else {
+		if err := json.Unmarshal(data, &encodedTree); err != nil {
+			return err
+		}
 	}
 
 	hashes := make([]*big.Int, len(encodedTree.Hashes))
