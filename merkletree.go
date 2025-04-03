@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"slices"
@@ -37,7 +39,16 @@ func getSiblingIndex(index int) (int, error) {
 	return -1, errors.New("root has no siblings")
 }
 
-func GenerateMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) []*big.Int {
+type MerkleTree struct {
+	hashes []*big.Int
+}
+
+type EncodedTree struct {
+	Hashes []string `json:"hashes"`
+}
+
+func NewMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) *MerkleTree {
+
 	if len(leaves) == 0 {
 		return nil
 	}
@@ -53,26 +64,32 @@ func GenerateMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) []*bi
 		})
 	}
 
-	tree := make([]*big.Int, 2*len(leaves)-1)
+	hashes := make([]*big.Int, 2*len(leaves)-1)
 	for i, hash := range sortedHashes {
-		tree[len(tree)-1-i] = hash
+		hashes[len(hashes)-1-i] = hash
 	}
 
-	for i := len(tree) - len(leaves) - 1; i >= 0; i-- {
+	for i := len(hashes) - len(leaves) - 1; i >= 0; i-- {
 		leftChildIndex := getLeftChildIndex(i)
 		rightChildIndex := getRightChildIndex(i)
 
-		leftChild := tree[leftChildIndex]
-		rightChild := tree[rightChildIndex]
+		leftChild := hashes[leftChildIndex]
+		rightChild := hashes[rightChildIndex]
 
-		tree[i] = nodeHash(leftChild, rightChild)
+		hashes[i] = nodeHash(leftChild, rightChild)
 	}
 
-	return tree
+	return &MerkleTree{
+		hashes: hashes,
+	}
 }
 
-func GetMerkleProof(tree []*big.Int, index int) ([]*big.Int, error) {
-	treeIndex := len(tree) - 1 - index
+func (m *MerkleTree) Root() *big.Int {
+	return m.hashes[0]
+}
+
+func (m *MerkleTree) GetMerkleProof(index int) ([]*big.Int, error) {
+	treeIndex := len(m.hashes) - 1 - index
 
 	var proof []*big.Int
 
@@ -81,7 +98,7 @@ func GetMerkleProof(tree []*big.Int, index int) ([]*big.Int, error) {
 		if err != nil {
 			return nil, err
 		}
-		proof = append(proof, tree[siblingIndex])
+		proof = append(proof, m.hashes[siblingIndex])
 		treeIndex, err = getParentIndex(treeIndex)
 		if err != nil {
 			return nil, err
@@ -89,4 +106,35 @@ func GetMerkleProof(tree []*big.Int, index int) ([]*big.Int, error) {
 	}
 
 	return proof, nil
+}
+
+func (m *MerkleTree) MarshalJSON() ([]byte, error) {
+	var encodedHashes = make([]string, len(m.hashes))
+	for i, node := range m.hashes {
+		encodedHashes[i] = fmt.Sprintf("0x%x", node)
+	}
+
+	return json.Marshal(EncodedTree{
+		Hashes: encodedHashes,
+	})
+}
+
+func (m *MerkleTree) UnmarshalJSON(data []byte) error {
+	var encodedTree EncodedTree
+	if err := json.Unmarshal(data, &encodedTree); err != nil {
+		return err
+	}
+
+	hashes := make([]*big.Int, len(encodedTree.Hashes))
+	for i, node := range encodedTree.Hashes {
+		var success bool
+		hashes[i], success = new(big.Int).SetString(node, 0)
+		if !success {
+			return errors.New("invalid tree format")
+		}
+	}
+
+	m.hashes = hashes
+
+	return nil
 }

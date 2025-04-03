@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -149,23 +148,13 @@ func NewRpcHandler(db *sql.DB) http.Handler {
 				return
 			}
 
-			var strTree []string
-			if err := json.Unmarshal([]byte(encodedTree), &strTree); err != nil {
+			var tree MerkleTree
+			if err := json.Unmarshal([]byte(encodedTree), &tree); err != nil {
 				writeError(w, err)
 				return
 			}
 
-			var tree = make([]*big.Int, len(strTree))
-			for i, node := range strTree {
-				var success bool
-				tree[i], success = new(big.Int).SetString(node, 0)
-				if !success {
-					writeError(w, errors.New("invalid tree format"))
-					return
-				}
-			}
-
-			proof, err := GetMerkleProof(tree, params.Index)
+			proof, err := tree.GetMerkleProof(params.Index)
 			if err != nil {
 				writeError(w, err)
 				return

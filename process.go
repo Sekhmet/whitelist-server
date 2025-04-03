@@ -47,15 +47,10 @@ func ProcessRequest(r *Request, db *sql.DB) error {
 		leaves = append(leaves, leaf)
 	}
 
-	tree := GenerateMerkleTree(leaves, starknet.NodeHash, false)
-	root := tree[0]
+	tree := NewMerkleTree(leaves, starknet.NodeHash, false)
+	root := tree.Root()
 
-	var strTree = make([]string, len(tree))
-	for i, node := range tree {
-		strTree[i] = fmt.Sprintf("0x%x", node)
-	}
-
-	encodedTree, err := json.Marshal(strTree)
+	encodedTree, err := json.Marshal(tree)
 	if err != nil {
 		return err
 	}

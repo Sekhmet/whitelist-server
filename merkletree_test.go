@@ -10,7 +10,7 @@ import (
 	"github.com/Sekhmet/whitelist-server/starknet"
 )
 
-func getStarnetTree() []*big.Int {
+func getStarnetTree() *MerkleTree {
 	var leaves []Leaf
 
 	for i := range 20 {
@@ -24,10 +24,10 @@ func getStarnetTree() []*big.Int {
 		leaves = append(leaves, leaf)
 	}
 
-	return GenerateMerkleTree(leaves, starknet.NodeHash, false)
+	return NewMerkleTree(leaves, starknet.NodeHash, false)
 }
 
-func getEvmTree() []*big.Int {
+func getEvmTree() *MerkleTree {
 	var leaves []Leaf
 
 	for i := range 20 {
@@ -38,13 +38,13 @@ func getEvmTree() []*big.Int {
 		leaves = append(leaves, leaf)
 	}
 
-	return GenerateMerkleTree(leaves, evm.NodeHash, true)
+	return NewMerkleTree(leaves, evm.NodeHash, true)
 }
 
 func TestGenerateMerkleTreeStarknet(t *testing.T) {
 	tree := getStarnetTree()
 
-	got := tree[0]
+	got := tree.Root()
 	want, _ := new(big.Int).SetString("0xbfddde52fc7d24a63693fb4dfa257571238e2d654aecbe6bc26f067e770bc5", 0)
 
 	if got.Cmp(want) != 0 {
@@ -69,7 +69,7 @@ func TestGetMerkleProofStarknet(t *testing.T) {
 	}
 
 	leafIndex := 2
-	got, err := GetMerkleProof(tree, leafIndex)
+	got, err := tree.GetMerkleProof(leafIndex)
 	if err != nil {
 		t.Fatalf("GetMerkleProof() error = %v", err)
 	}
@@ -88,7 +88,7 @@ func TestGetMerkleProofStarknet(t *testing.T) {
 func TestGenerateMerkleTreeEvm(t *testing.T) {
 	tree := getEvmTree()
 
-	got := tree[0]
+	got := tree.Root()
 	want, _ := new(big.Int).SetString("0xacc4e698f6fd65fbe01a589f241bbdae1739e556bf2e0510b844acbdecda2fdf", 0)
 
 	if got.Cmp(want) != 0 {
@@ -114,7 +114,7 @@ func TestGetMerkleProofEvm(t *testing.T) {
 	// This is updated index after sorting.
 	// The original index was 5. Needs to be updated after sorting is fully implemented.
 	leafIndex := 10
-	got, err := GetMerkleProof(tree, leafIndex)
+	got, err := tree.GetMerkleProof(leafIndex)
 	if err != nil {
 		t.Fatalf("GetMerkleProof() error = %v", err)
 	}
@@ -127,5 +127,25 @@ func TestGetMerkleProofEvm(t *testing.T) {
 		if got[i].Cmp(want[i]) != 0 {
 			t.Errorf("GetMerkleProof()[%d] = %v, want %v", i, got[i], want[i])
 		}
+	}
+}
+
+func TestJSONEncodingAndDecoding(t *testing.T) {
+	tree := getStarnetTree()
+	encodedTree, err := tree.MarshalJSON()
+	if err != nil {
+		t.Fatalf("failed to encode tree: %v", err)
+	}
+
+	var decodedTree MerkleTree
+	if err := decodedTree.UnmarshalJSON(encodedTree); err != nil {
+		t.Fatalf("failed to decode tree: %v", err)
+	}
+
+	want := tree.Root()
+	got := decodedTree.Root()
+
+	if got.Cmp(want) != 0 {
+		t.Errorf("decoded tree root = 0x%x, want 0x%x", got, want)
 	}
 }
