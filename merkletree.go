@@ -40,33 +40,47 @@ func getSiblingIndex(index int) (int, error) {
 }
 
 type MerkleTree struct {
-	hashes []*big.Int
+	hashes      []*big.Int
+	treeIndices map[int]int
 }
 
 type EncodedTree struct {
-	Hashes []string `json:"hashes"`
+	Hashes      []string    `json:"hashes"`
+	TreeIndices map[int]int `json:"tree_indices"`
+}
+
+type IndexedLeaf struct {
+	index int
+	hash  *big.Int
 }
 
 func NewMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) *MerkleTree {
-
 	if len(leaves) == 0 {
 		return nil
 	}
 
-	sortedHashes := make([]*big.Int, len(leaves))
+	indexedLeaves := make([]IndexedLeaf, len(leaves))
 	for i, leaf := range leaves {
-		sortedHashes[i] = leaf.Hash()
+		indexedLeaves[i] = IndexedLeaf{
+			index: i,
+			hash:  leaf.Hash(),
+		}
 	}
 
 	if sortLeaves {
-		slices.SortFunc(sortedHashes, func(a, b *big.Int) int {
-			return a.Cmp(b)
+		slices.SortFunc(indexedLeaves, func(a, b IndexedLeaf) int {
+			return a.hash.Cmp(b.hash)
 		})
 	}
 
 	hashes := make([]*big.Int, 2*len(leaves)-1)
-	for i, hash := range sortedHashes {
-		hashes[len(hashes)-1-i] = hash
+	treeIndices := make(map[int]int, len(leaves))
+
+	for i, indexedLeaf := range indexedLeaves {
+		treeIndex := len(hashes) - 1 - i
+
+		hashes[treeIndex] = indexedLeaf.hash
+		treeIndices[indexedLeaf.index] = treeIndex
 	}
 
 	for i := len(hashes) - len(leaves) - 1; i >= 0; i-- {
@@ -80,7 +94,8 @@ func NewMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) *MerkleTre
 	}
 
 	return &MerkleTree{
-		hashes: hashes,
+		hashes:      hashes,
+		treeIndices: treeIndices,
 	}
 }
 
@@ -89,10 +104,9 @@ func (m *MerkleTree) Root() *big.Int {
 }
 
 func (m *MerkleTree) GetMerkleProof(index int) ([]*big.Int, error) {
-	treeIndex := len(m.hashes) - 1 - index
+	treeIndex := m.treeIndices[index]
 
 	var proof []*big.Int
-
 	for treeIndex > 0 {
 		siblingIndex, err := getSiblingIndex(treeIndex)
 		if err != nil {
@@ -115,7 +129,8 @@ func (m *MerkleTree) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(EncodedTree{
-		Hashes: encodedHashes,
+		Hashes:      encodedHashes,
+		TreeIndices: m.treeIndices,
 	})
 }
 
@@ -135,6 +150,7 @@ func (m *MerkleTree) UnmarshalJSON(data []byte) error {
 	}
 
 	m.hashes = hashes
+	m.treeIndices = encodedTree.TreeIndices
 
 	return nil
 }

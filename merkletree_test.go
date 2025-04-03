@@ -111,9 +111,7 @@ func TestGetMerkleProofEvm(t *testing.T) {
 		want[i], _ = new(big.Int).SetString(o, 0)
 	}
 
-	// This is updated index after sorting.
-	// The original index was 5. Needs to be updated after sorting is fully implemented.
-	leafIndex := 10
+	leafIndex := 5
 	got, err := tree.GetMerkleProof(leafIndex)
 	if err != nil {
 		t.Fatalf("GetMerkleProof() error = %v", err)
