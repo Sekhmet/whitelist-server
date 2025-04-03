@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/rs/cors"
 )
+
+var SUPPORTED_NETWORKS = []string{"starknet", "evm"}
 
 type JsonRpcRequest struct {
 	Method string          `json:"method"`
@@ -78,6 +81,11 @@ func NewRpcHandler(db *sql.DB) http.Handler {
 
 			if len(params.Entries) == 0 {
 				writeError(w, errors.New("entries cannot be empty"))
+				return
+			}
+
+			if !slices.Contains(SUPPORTED_NETWORKS, params.Network) {
+				writeError(w, errors.New("unsupported network"))
 				return
 			}
 
