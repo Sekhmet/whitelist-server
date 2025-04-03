@@ -47,7 +47,7 @@ func ProcessRequest(r *Request, db *sql.DB) error {
 		leaves = append(leaves, leaf)
 	}
 
-	tree := GenerateMerkleTree(leaves)
+	tree := GenerateMerkleTree(leaves, starknet.NodeHash, false)
 	root := tree[0]
 
 	var strTree = make([]string, len(tree))

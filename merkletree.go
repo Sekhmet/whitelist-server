@@ -4,10 +4,10 @@ import (
 	"errors"
 	"math"
 	"math/big"
-
-	"github.com/consensys/gnark-crypto/ecc/stark-curve/fp"
-	pedersenhash "github.com/consensys/gnark-crypto/ecc/stark-curve/pedersen-hash"
+	"slices"
 )
+
+type NodeHash func(left, right *big.Int) *big.Int
 
 type Leaf interface {
 	Hash() *big.Int
@@ -37,31 +37,35 @@ func getSiblingIndex(index int) (int, error) {
 	return -1, errors.New("root has no siblings")
 }
 
-func GenerateMerkleTree(leaves []Leaf) []*big.Int {
+func GenerateMerkleTree(leaves []Leaf, nodeHash NodeHash, sortLeaves bool) []*big.Int {
 	if len(leaves) == 0 {
 		return nil
 	}
 
-	tree := make([]*big.Int, 2*len(leaves)-1)
+	sortedHashes := make([]*big.Int, len(leaves))
 	for i, leaf := range leaves {
-		tree[len(tree)-1-i] = leaf.Hash()
+		sortedHashes[i] = leaf.Hash()
+	}
+
+	if sortLeaves {
+		slices.SortFunc(sortedHashes, func(a, b *big.Int) int {
+			return a.Cmp(b)
+		})
+	}
+
+	tree := make([]*big.Int, 2*len(leaves)-1)
+	for i, hash := range sortedHashes {
+		tree[len(tree)-1-i] = hash
 	}
 
 	for i := len(tree) - len(leaves) - 1; i >= 0; i-- {
 		leftChildIndex := getLeftChildIndex(i)
 		rightChildIndex := getRightChildIndex(i)
 
-		leftChild := new(fp.Element).SetBigInt(tree[leftChildIndex])
-		rightChild := new(fp.Element).SetBigInt(tree[rightChildIndex])
+		leftChild := tree[leftChildIndex]
+		rightChild := tree[rightChildIndex]
 
-		if leftChild.Cmp(rightChild) > 0 {
-			fp := pedersenhash.Pedersen(leftChild, rightChild)
-			tree[i] = fp.BigInt(new(big.Int))
-		} else {
-			fp := pedersenhash.Pedersen(rightChild, leftChild)
-			tree[i] = fp.BigInt(new(big.Int))
-		}
-
+		tree[i] = nodeHash(leftChild, rightChild)
 	}
 
 	return tree
