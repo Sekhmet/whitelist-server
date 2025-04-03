@@ -99,11 +99,27 @@ func ProcessRequest(r *Request, db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec(
-		"UPDATE merkletree_requests SET processed = true, updated_at = CURRENT_TIMESTAMP, root = $1, tree = $2 WHERE id = $3",
-		fmt.Sprintf("0x%x", root), encodedTree, r.id,
-	)
+	tx, err := db.Begin()
 	if err != nil {
+		return nil
+	}
+	defer tx.Rollback()
+
+	if _, err = tx.Exec(
+		"UPDATE merkletree_requests SET processed = true, updated_at = CURRENT_TIMESTAMP, root = $1 WHERE id = $2",
+		fmt.Sprintf("0x%x", root), r.id,
+	); err != nil {
+		return err
+	}
+
+	if _, err = tx.Exec(
+		"INSERT INTO merkletrees (id, tree) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+		fmt.Sprintf("0x%x", root), encodedTree,
+	); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 

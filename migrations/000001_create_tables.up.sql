@@ -4,6 +4,12 @@ CREATE TABLE IF NOT EXISTS "merkletree_requests" (
     "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "network" VARCHAR(255) NOT NULL,
     "processed" BOOLEAN DEFAULT FALSE,
-    "root" VARCHAR(255),
+    "root" VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS "merkletrees" (
+    "id" VARCHAR(255) PRIMARY KEY,
+    "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "tree" JSONB
 );

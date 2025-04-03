@@ -146,9 +146,9 @@ func NewRpcHandler(db *sql.DB) http.Handler {
 			}
 
 			var encodedTree string
-			if err := db.QueryRow("SELECT tree FROM merkletree_requests WHERE root = $1", params.Root).Scan(&encodedTree); err != nil {
+			if err := db.QueryRow("SELECT tree FROM merkletrees WHERE id = $1", params.Root).Scan(&encodedTree); err != nil {
 				if err == sql.ErrNoRows {
-					writeError(w, errors.New("request not found"))
+					writeError(w, errors.New("tree not found"))
 					return
 				}
 
